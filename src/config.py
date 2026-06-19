@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 from model_provider import ProviderConfig
 
@@ -46,7 +48,29 @@ def load_config(base_dir: Path | None = None) -> LabConfig:
     # - OLLAMA_BASE_URL
     # - OPENROUTER_API_KEY
     # - CUSTOM_BASE_URL / CUSTOM_API_KEY
-    # TODO: create `root / "state"`.
-    # TODO: choose sensible defaults for compact memory.
+    load_dotenv(root / ".env")
+    
+    # We will use OpenAI by default since the user provided an OpenAI key.
+    llm_provider = os.getenv("LLM_PROVIDER", "openai")
+    llm_model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    llm_temp = float(os.getenv("LLM_TEMPERATURE", "0.0"))
+    
+    provider_config = ProviderConfig(provider=llm_provider, model_name=llm_model, temperature=llm_temp)
 
-    raise NotImplementedError("Students should implement load_config().")
+    # TODO: create `root / "state"`.
+    state_dir = root / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+
+    # TODO: choose sensible defaults for compact memory.
+    compact_threshold_tokens = 2000
+    compact_keep_messages = 4
+
+    return LabConfig(
+        base_dir=root,
+        data_dir=root / "data",
+        state_dir=state_dir,
+        compact_threshold_tokens=compact_threshold_tokens,
+        compact_keep_messages=compact_keep_messages,
+        model=provider_config,
+        judge_model=provider_config
+    )
