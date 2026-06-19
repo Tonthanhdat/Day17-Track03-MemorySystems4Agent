@@ -74,14 +74,24 @@ class AdvancedAgent:
         
         if facts:
             current_profile = self.profile_store.read_text(user_id)
-            new_lines = []
-            for k, v in facts.items():
-                fact_str = f"- {k}: {v}"
-                if fact_str not in current_profile:
-                    new_lines.append(fact_str)
-            if new_lines:
-                updated = current_profile + "\n" + "\n".join(new_lines)
-                self.profile_store.write_text(user_id, updated.strip())
+            
+            # BONUS: Conflict Handling
+            # Instead of blindly appending new facts which might cause duplicate or conflicting information 
+            # (e.g. user moves from Da Nang to Hanoi), we parse the existing profile and update keys.
+            profile_dict = {}
+            for line in current_profile.split("\n"):
+                line = line.strip()
+                if line.startswith("- ") and ":" in line:
+                    parts = line[2:].split(":", 1)
+                    if len(parts) == 2:
+                        profile_dict[parts[0].strip()] = parts[1].strip()
+                        
+            # Update with new facts (overwriting old ones)
+            profile_dict.update(facts)
+            
+            # Write back the resolved profile
+            updated = "\n".join(f"- {k}: {v}" for k, v in profile_dict.items())
+            self.profile_store.write_text(user_id, updated)
                 
         self.compact_memory.append(thread_id, "user", message)
         

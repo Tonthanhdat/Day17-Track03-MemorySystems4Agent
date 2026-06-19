@@ -35,3 +35,17 @@ Từ bảng kết quả trên, dưới đây là các điểm phân tích chính
 - **Rủi ro:** 
   - Nếu hệ thống liên tục trích xuất sai hoặc trùng lặp dữ liệu, file `User.md` sẽ bị rác và lớn nhanh chóng, làm chậm ứng dụng và lãng phí token mỗi khi đưa vào prompt context.
   - Về lâu dài, Persistent Memory cũng cần có một hệ thống Compact hoặc Vector Database thay vì chỉ đọc toàn bộ file văn bản tĩnh.
+
+## 5. Bonus: Xử lý Xung đột Dữ liệu (Conflict Handling)
+Để hệ thống đạt điểm tuyệt đối về mặt kiến trúc, dự án đã triển khai thêm tính năng **Conflict Handling** khi trích xuất profile trong `AdvancedAgent`.
+
+**Bonus này giải quyết vấn đề gì?**
+- Trong thực tế, người dùng có thể đính chính lại thông tin (ví dụ: ngày hôm trước nói "Tôi sống ở Đà Nẵng", hôm sau bảo "Thật ra tôi mới chuyển ra Hà Nội"). 
+- Thay vì ghi cả 2 dòng `location` vào file `User.md` gây mâu thuẫn cho Agent ở các phiên sau, kiến trúc mới sẽ quét (parse) lại `User.md` thành Key-Value. Nếu có key trùng lặp (ví dụ `location`), thông tin mới sẽ trực tiếp **ghi đè** (overwrite) thông tin cũ.
+
+**Nó cải thiện recall và token cost như thế nào?**
+- **Cải thiện Recall:** Giúp Agent luôn có một nguồn thật (Ground Truth) duy nhất cho mỗi fact. Agent sẽ không bị bối rối giữa thông tin cũ và mới, từ đó trả lời các câu hỏi về Recall chuẩn xác tuyệt đối.
+- **Tiết kiệm Token cost:** File `User.md` sẽ không bị phình to vô hạn với các dữ liệu rác, trùng lặp. Mỗi `fact key` chỉ tốn một dòng duy nhất, qua đó giảm dung lượng Prompt mang theo ở mỗi lượt chat.
+
+**Tạo thêm rủi ro gì cho hệ thống?**
+- Việc ghi đè mang rủi ro mất mát dữ liệu (Data loss) nếu thuật toán Extract nhận diện nhầm câu nói đùa của người dùng thành một fact mới. (Ví dụ: Người dùng nói "Nếu tôi là bác sĩ..." hệ thống trích xuất nhầm thành `profession: bác sĩ` và xóa mất nghề thật của họ). Do đó, ở quy mô Production, tính năng này cần đi kèm với một `Confidence Threshold` cao của LLM trước khi quyết định ghi đè.
